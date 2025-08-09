@@ -1,0 +1,4 @@
+
+
+#define NUM_OF_PAGES 	256
+#define PAGE_SIZE		64

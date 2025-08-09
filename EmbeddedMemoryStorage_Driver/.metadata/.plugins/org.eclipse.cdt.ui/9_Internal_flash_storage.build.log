@@ -1,0 +1,10 @@
+10:29:50 **** Incremental Build of configuration Debug for project 9_Internal_flash_storage ****
+make -j8 all 
+arm-none-eabi-size   9_Internal_flash_storage.elf 
+   text	   data	    bss	    dec	    hex	filename
+   3464	     56	   1808	   5328	   14d0	9_Internal_flash_storage.elf
+Finished building: default.size.stdout
+ 
+
+10:29:50 Build Finished. 0 errors, 0 warnings. (took 464ms)
+

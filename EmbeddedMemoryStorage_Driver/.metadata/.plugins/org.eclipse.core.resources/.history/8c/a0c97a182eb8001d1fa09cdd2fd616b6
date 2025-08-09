@@ -1,0 +1,555 @@
+#include "w25qxx.h"
+#include "timebase.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+
+/*Pinout
+ *
+ * W25QXX          STM32
+ * VCC				3.3v
+ * GND				GND
+ * CS				PA4
+ * CLK              PA5(SPI_CLK)
+ * D1				PA7(SPI_MOSI)
+ * D0				PA6(SPI_MISO)
+ * */
+SPI_HandleTypeDef hspi1;
+
+
+//#define VERBOSE_DEBUG
+
+#define GPIOAEN		(1U<<0)
+#define CS_PIN		(1U<<4)
+
+
+
+static W25QXX_Status_t w25qxx_write_enable(W25QXX_t *w25qxx);
+static bool test_data_integrity(uint8_t test_byte, uint8_t *buf, uint32_t len);
+
+ void w25qxx_spi_init(void)
+{
+	hspi1.Instance = SPI1;
+	hspi1.Init.Mode = SPI_MODE_MASTER;
+	hspi1.Init.Direction =  SPI_DIRECTION_2LINES;
+	hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+	hspi1.Init.CLKPolarity =  SPI_POLARITY_LOW;
+	hspi1.Init.CLKPhase =  SPI_PHASE_1EDGE;
+	hspi1.Init.NSS =  SPI_NSS_SOFT;
+	hspi1.Init.BuadRatePrescaler =   SPI_BAUDRATEPRESCALER_2;
+	hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+
+
+	/*Initialize spi*/
+	spi_init(&hspi1);
+
+
+}
+
+ /*CS :PA4*/
+ void w25qxx_cs_pin_init(void)
+ {
+
+	 /*Enable clock access to GPIOA*/
+	 RCC->AHB1ENR |=GPIOAEN;
+
+	 /*Set PA4 as output pin*/
+	 GPIOA->MODER |=(1U<<8);
+	 GPIOA->MODER &=~(1U<<9);
+ }
+
+
+ /*Enable CS pin by driving it low*/
+ static void w25qxx_cs_on(void)
+ {
+	 GPIOA->ODR  &=~CS_PIN;
+ }
+ /*Disable CS pin by driving high*/
+
+ static void w25qxx_cs_off(void)
+ {
+	 GPIOA->ODR  |=CS_PIN;
+ }
+
+
+ /*Transmit*/
+ W25QXX_Status_t w25qxx_transmit(W25QXX_t *w25qxx, uint8_t * buf, uint32_t len)
+ {
+	 W25QXX_Status_t ret =  W25QXX_DEV_ERR;
+
+	 if(spi_transmit(w25qxx->w25qxx_spi_handle_t, buf,len, MAX_DELAY) == DEV_OK)
+	 {
+		 ret = W25QXX_DEV_OK;
+	 }
+
+	 return ret;
+ }
+
+ /*Receive*/
+ W25QXX_Status_t w25qxx_receive(W25QXX_t *w25qxx, uint8_t * buf, uint32_t len)
+ {
+	 W25QXX_Status_t ret =  W25QXX_DEV_ERR;
+
+	 if(spi_receive(w25qxx->w25qxx_spi_handle_t, buf,len, MAX_DELAY) == DEV_OK)
+	 {
+		 ret = W25QXX_DEV_OK;
+	 }
+	 return ret;
+ }
+
+
+ uint32_t w25qxx_read_id(W25QXX_t *w25qxx)
+ {
+	 uint32_t ret = 0;
+
+	 uint8_t temp_buff[3];
+
+	 /*Enable CS pin*/
+	 w25qxx_cs_on();
+
+	 /*Place command in temp buffer*/
+	 temp_buff[0] = W25QXX_JEDEC_ID;
+
+	 if(w25qxx_transmit(w25qxx, temp_buff, 1) == W25QXX_DEV_OK)
+	 {
+		 if(w25qxx_receive(w25qxx,temp_buff,3) == W25QXX_DEV_OK)
+		 {
+			 /*Store received data in return value*/
+			 ret  =  ((temp_buff[0] << 16) | (temp_buff[1] << 8) |(temp_buff[2]));
+		 }
+	 }
+
+	 /*Disable CS pin*/
+	 w25qxx_cs_off();
+
+	 return ret;
+
+ }
+
+ W25QXX_Status_t w25qxx_init(W25QXX_t *w25qxx,SPI_HandleTypeDef *hspi)
+ {
+	 uint32_t id;
+
+	 W25QXX_Status_t ret =  W25QXX_DEV_OK;
+	 w25qxx->w25qxx_spi_handle_t =  hspi;
+
+	 /*Disable CS pin*/
+	 w25qxx_cs_off();
+
+	 /*Get id*/
+	 id  = w25qxx_read_id(w25qxx);
+
+	 if(id)
+	 {
+		 w25qxx->w25qxx_manuf_id  =  (uint8_t)(id >> 16);
+		 w25qxx->w25qxx_dev_id    =  (uint16_t) (id & 0xFFFF);
+		 w25qxx->w25qxx_blk_sz    =  0x10000;
+		 w25qxx->w25qxx_sect_sz   =  0x1000;
+		 w25qxx->w25qxx_sect_in_blk = 0x10;
+		 w25qxx->w25qxx_pg_sz       = 0x100;
+		 w25qxx->w25qxx_blk_cnt    =  0x40;
+	 }
+
+	 else
+	 {
+		 ret = W25QXX_DEV_ERR;
+	 }
+
+	 return ret;
+ }
+
+ uint8_t w25qxx_get_status(W25QXX_t *w25qxx)
+ {
+	 uint8_t ret = 0;
+
+	 uint8_t temp_buff =  W25QXX_READ_STATUS_REG_1;
+
+
+	 /*Enable CS pin*/
+	 w25qxx_cs_on();
+
+	 if(w25qxx_transmit(w25qxx, &temp_buff,1) ==  W25QXX_DEV_OK)
+	 {
+		 /*Receive status from chip*/
+		 if(w25qxx_receive(w25qxx,&temp_buff,1) == W25QXX_DEV_OK )
+		 {
+			 ret  =  temp_buff;
+		 }
+	 }
+	 /*Disable CS pin*/
+	 w25qxx_cs_off();
+
+	 return ret;
+
+ }
+
+
+ W25QXX_Status_t w25qxx_wait_for_ready(W25QXX_t *w25qxx, uint32_t timeout)
+ {
+	 W25QXX_Status_t ret  =  W25QXX_DEV_OK;
+
+	 uint32_t prev_time =  get_tick();
+	 uint32_t curr_time  =  get_tick();
+
+	 while((curr_time -  prev_time  <=  timeout) && (w25qxx_get_status(w25qxx) && 0x01  == 0x01))
+	 {
+		 curr_time  =  get_tick();
+
+	 }
+
+	 if(curr_time -  prev_time  ==  timeout)
+	 {
+		 ret =  W25QXX_DEV_TIMEOUT;
+	 }
+
+	 return ret;
+ }
+
+ W25QXX_Status_t w25qxx_write(W25QXX_t *w25qxx, uint32_t address, uint8_t *buf, uint32_t len) {
+     // Print a debug message indicating the start of the write function
+ #ifdef VERBOSE_DEBUG
+ 	printf("DEBUG : Write()  - Address 0x%08lx Length 0x%04lx\n\r", address, len);
+ #endif
+     // Determine the first and last pages that will be written to
+     uint32_t first_page = address / w25qxx->w25qxx_pg_sz;
+     uint32_t last_page = (address + len - 1) / w25qxx->w25qxx_pg_sz;
+
+     // Print the number of pages that will be written to
+ #ifdef VERBOSE_DEBUG
+
+     printf("DEBUG : Write() %lu Pages from %lu to %lu\n\r", 1 + last_page - first_page, first_page, last_page);
+ #endif
+
+     // Initialize buffer offset and start address
+     uint32_t buffer_offset = 0;
+     uint32_t start_address = address;
+
+     // Loop through each page to be written to
+     for (uint32_t page = first_page; page <= last_page; ++page) {
+
+         // Calculate the end address for this page
+         uint32_t end_address = page < last_page ? start_address + w25qxx->w25qxx_pg_sz : address + len;
+         uint32_t write_len = end_address - start_address;
+
+         // Print debug information about this page
+ #ifdef VERBOSE_DEBUG
+
+         printf("DEBUG : Write()  Page %lu Start Address = 0x%08lx End Address = 0x%08lx buffer_offset = 0x%08lx len = %04lx\n\r",
+                 page, start_address, end_address, buffer_offset, write_len);
+ #endif
+
+         // Wait for the device to be ready
+         if (w25qxx_wait_for_ready(w25qxx,MAX_DELAY) != W25QXX_DEV_OK) {
+             // Return error if device is not ready
+             return W25QXX_DEV_ERR;
+         }
+
+         // Enable writing to the device
+         if (w25qxx_write_enable(w25qxx) == W25QXX_DEV_OK) {
+
+             // Prepare the write command
+             uint8_t tx[4] = {W25QXX_PAGE_PROGRAM,
+                              (uint8_t) (start_address >> 16),
+                              (uint8_t) (start_address >> 8),
+                              (uint8_t) (start_address)};
+
+             // Enable chip select
+             w25qxx_cs_on();
+
+             // Transmit the write command
+             if (w25qxx_transmit(w25qxx, tx, 4) == W25QXX_DEV_OK) {
+                 // Transmit the buffer
+                 if (w25qxx_transmit(w25qxx, buf, write_len) != W25QXX_DEV_OK) {
+                     // Disable chip select and return error if write fails
+                     w25qxx_cs_off(w25qxx);
+                     return W25QXX_DEV_ERR;
+                 }
+             }
+             w25qxx_cs_off();
+
+         }
+
+         start_address += w25qxx->w25qxx_pg_sz;
+         buffer_offset += w25qxx->w25qxx_pg_sz;
+
+     }
+
+     return W25QXX_DEV_OK;
+ }
+
+// W25QXX_Status_t w25qxx_write(W25QXX_t *w25qxx, uint32_t address, uint8_t *buf, uint32_t len)
+//{
+//#ifdef VERBOSE_DEBUG
+//	printf("DEBUG : Write()  - Address 0x%08lx Length 0x%04lx\n\r", address, len);
+//#endif
+//	 /*Determine first and last pages that will be written to*/
+//	  uint32_t first_page = address / w25qxx->w25qxx_pg_sz;
+//	  uint32_t last_page = (address + len - 1) / w25qxx->w25qxx_pg_sz;
+//
+//
+//#ifdef VERBOSE_DEBUG
+//	  /*Print the number of pages that will be written to*/
+//    printf("DEBUG : Write() %lu Pages from %lu to %lu\n\r", 1 + last_page - first_page, first_page, last_page);
+//#endif
+//
+//    /*Initialize buffer offset and start address*/
+//    uint32_t buffer_offset = 0;
+//    uint32_t start_address = address;
+//
+//
+//    /*Loop through each page to be written to*/
+//
+//    for(uint32_t page =  first_page; page <= last_page; ++page)
+//    {
+//
+//    	/*Calculate end address of the current page*/
+//        uint32_t end_address = page < last_page ? start_address + w25qxx->w25qxx_pg_sz : address + len;
+//        uint32_t write_len = end_address - start_address;
+//
+//
+//#ifdef VERBOSE_DEBUG
+//
+//        printf("DEBUG : Write()  Page %lu Start Address = 0x%08lx End Address = 0x%08lx buffer_offset = 0x%08lx len = %04lx\n\r",
+//                page, start_address, end_address, buffer_offset, write_len);
+//#endif
+//
+//         /*Wait for the device to be ready*/
+//        if (w25qxx_wait_for_ready(w25qxx,MAX_DELAY) != W25QXX_DEV_OK) {
+//
+//        	// Return error if device is not ready
+//            return W25QXX_DEV_ERR;
+//        }
+//        /*Enable writing to the device*/
+//        if(w25qxx_write_enable(w25qxx) == W25QXX_DEV_OK)
+//        {
+//        	/*Prep the write command*/
+//        	uint8_t tx[4] =  { W25QXX_PAGE_PROGRAM,
+//        					   (uint8_t)(start_address >>16),
+//							   (uint8_t)(start_address >>8),
+//							   (uint8_t)start_address
+//        					 };
+//
+//       	 /*Enable CS pin*/
+//       	 w25qxx_cs_on();
+//
+//       	 /*Transmit adrress and write command*/
+//       	 if(w25qxx_transmit(w25qxx,tx,4) == W25QXX_DEV_OK )
+//       	 {
+//       		 /*Transmit data*/
+//       		 if(w25qxx_transmit(w25qxx,buf,write_len) != W25QXX_DEV_OK )
+//       		 {
+//
+//       	       	 /*Disable CS pin*/
+//       	       	 w25qxx_cs_off();
+//
+//       	       	 return W25QXX_DEV_ERR;
+//
+//
+//       		 }
+//
+//
+//       	 }
+//
+//     	 /*Disable CS pin*/
+//          w25qxx_cs_off();
+//        }
+//
+//        start_address += w25qxx->w25qxx_pg_sz;
+//        buffer_offset += w25qxx->w25qxx_pg_sz;
+//    }
+//
+//
+//        return W25QXX_DEV_OK;
+//}
+
+ static W25QXX_Status_t w25qxx_write_enable(W25QXX_t *w25qxx)
+ {
+	 W25QXX_Status_t ret =  W25QXX_DEV_ERR;
+	 uint8_t temp_buff[1];
+
+	 /*Enable CS pin*/
+	 w25qxx_cs_on();
+
+	 temp_buff[0]  = W25QXX_WRITE_EN;
+
+	 if(w25qxx_transmit(w25qxx, temp_buff,1) ==  W25QXX_DEV_OK)
+	 {
+		 ret =  W25QXX_DEV_OK;
+	 }
+
+	 /*Disable CS pin*/
+	 w25qxx_cs_off();
+
+	 return ret;
+ }
+
+ W25QXX_Status_t w25qxx_read(W25QXX_t *w25qxx, uint32_t address, uint8_t *buf, uint32_t len)
+ {
+    	uint8_t tx[4] =  { W25QXX_READ_DATA,
+     					   (uint8_t)(address >>16),
+							(uint8_t)(address >>8),
+							 (uint8_t)address
+     					 };
+
+        /*Wait for the device to be ready*/
+         if (w25qxx_wait_for_ready(w25qxx,MAX_DELAY) != W25QXX_DEV_OK) {
+
+         	// Return error if device is not ready
+             return W25QXX_DEV_ERR;
+         }
+
+
+    	 /*Enable CS pin*/
+    	 w25qxx_cs_on();
+
+       	 /*Transmit adrress and write command*/
+       	 if(w25qxx_transmit(w25qxx,tx,4) == W25QXX_DEV_OK )
+       	 {
+       		 /*Receive data*/
+       		 if(w25qxx_receive(w25qxx,buf,len) != W25QXX_DEV_OK )
+       		 {
+
+       	       	 /*Disable CS pin*/
+       	       	 w25qxx_cs_off();
+
+       	       	 return W25QXX_DEV_ERR;
+       		 }
+       	 }
+	       	 /*Disable CS pin*/
+   	       	 w25qxx_cs_off();
+
+   	       	 return W25QXX_DEV_OK;
+ }
+
+ W25QXX_Status_t w25qxx_erase(W25QXX_t *w25qxx, uint32_t address, uint32_t len)
+ {
+
+#ifdef VERBOSE_DEBUG
+
+    // Print message indicating the start of the erase operation and the address and length parameters
+    printf("DEBUG : Erase() Address = 0x%08lx Length = 0x%04lx\n\r", address, len);
+#endif
+
+    W25QXX_Status_t ret = W25QXX_DEV_OK;
+
+
+    // Determine the first sector to be erased
+    uint32_t first_sector = address / w25qxx->w25qxx_sect_sz;
+
+    // Determine the last sector to be erased
+    uint32_t last_sector = (address + len - 1) / w25qxx->w25qxx_sect_sz;
+
+#ifdef VERBOSE_DEBUG
+
+    // Print the first sector number to be erased
+    printf("DEBUG : Erase() First Sector: 0x%04lx\n\r", first_sector);
+
+    // Print the last sector number to be erased
+    printf("DEBUG : Erase() Last Sector : 0x%04lx\n\r", last_sector);
+#endif
+
+    // Loop through all the sectors to be erased
+    for (uint32_t sector = first_sector; sector <= last_sector; ++sector) {
+
+#ifdef VERBOSE_DEBUG
+
+        // Print a message indicating the start of the erase operation for the current sector
+        printf("DEBUG : Erase() Erasing Sector %lu, Starting at: 0x%08lx\n\r", sector, sector * w25qxx->w25qxx_sect_sz);
+#endif
+
+        // Ensure that the device is not busy by checking the status register
+        if (w25qxx_wait_for_ready(w25qxx, MAX_DELAY) == W25QXX_DEV_OK) {
+
+            // Enable write operations
+            if (w25qxx_write_enable(w25qxx) == W25QXX_DEV_OK) {
+
+                // Calculate the start address of the current sector
+                uint32_t sector_start_address = sector * w25qxx->w25qxx_sect_sz;
+
+            	uint8_t tx[4] =  { W25QXX_SECTOR_ERASE,
+             					   (uint8_t)(sector_start_address >>16),
+        						    (uint8_t)(sector_start_address >>8),
+        							(uint8_t)sector_start_address
+             					 };
+
+           	 /*Enable CS pin*/
+           	 w25qxx_cs_on();
+
+           	 /*Transmit erase command and address to the chip*/
+
+           	 if(w25qxx_transmit(w25qxx, tx,4) != W25QXX_DEV_OK)
+
+           		 ret  =  W25QXX_DEV_ERR;
+            }
+
+         	 /*Disable CS pin*/
+          	 w25qxx_cs_off();
+        }
+        else
+        {
+      		 ret  =  W25QXX_DEV_TIMEOUT;
+
+        }
+    }
+
+    return ret;
+ }
+
+
+ W25QXX_Status_t w25qxx_chip_erase(W25QXX_t *w25qxx)
+ {
+	   // Enable writing to the device
+	    if (w25qxx_write_enable(w25qxx) == W25QXX_DEV_OK) {
+
+	        // Prepare the command for chip erase
+	        uint8_t tx[1] = { W25QXX_CHIP_ERASE };
+
+          	 /*Enable CS pin*/
+          	 w25qxx_cs_on();
+
+             // Transmit the command
+             if (w25qxx_transmit(w25qxx, tx, 1) != W25QXX_DEV_OK) {
+                 // Return error if the transmission fails
+                 return W25QXX_DEV_ERR;
+             }
+
+         	 /*Disable CS pin*/
+          	 w25qxx_cs_off();
+
+             // Wait for the device to finish the chip erase operation
+             if (w25qxx_wait_for_ready(w25qxx, MAX_DELAY) != W25QXX_DEV_OK) {
+                 // Return error if the wait operation times out
+                 return W25QXX_DEV_ERR;
+             }
+	    }
+
+	    return W25QXX_DEV_OK;
+ }
+
+ static bool test_data_integrity(uint8_t test_byte, uint8_t *buf, uint32_t len)
+ {
+	 bool ret =  true;
+
+	 for(uint32_t i = 0; i < len; i++)
+	 {
+		 if(buf[i] != test_byte)
+		 {
+			 ret = false;
+		 }
+
+	 }
+
+	 return ret;
+ }
+ void w25qxx_get_mem_info(W25QXX_t w25qxx)
+ {
+		printf("TOTAL SIZE(in KB)  = 0x%04lx (%lu)\n\r", (w25qxx.w25qxx_blk_cnt * w25qxx.w25qxx_blk_sz)\
+									    / 1024, (w25qxx.w25qxx_blk_cnt * w25qxx.w25qxx_blk_sz) / 1024);
+
+		printf("BLOCK SIZE         = 0x%04lx (%lu)\n\r", w25qxx.w25qxx_blk_sz, w25qxx.w25qxx_blk_sz);
+		printf("BLOCK COUNT        = 0x%04lx (%lu)\n\r", w25qxx.w25qxx_blk_cnt, w25qxx.w25qxx_blk_cnt);
+		printf("SECTOR SIZE        = 0x%04lx (%lu)\n\r", w25qxx.w25qxx_sect_sz, w25qxx.w25qxx_sect_sz);
+		printf("SECTORS PER BLOCK  = 0x%04lx (%lu)\n\r", w25qxx.w25qxx_sect_in_blk, w25qxx.w25qxx_sect_in_blk);
+		printf("PAGE SIZE          = 0x%04lx (%lu)\n\r", w25qxx.w25qxx_pg_sz, w25qxx.w25qxx_pg_sz);
+ }

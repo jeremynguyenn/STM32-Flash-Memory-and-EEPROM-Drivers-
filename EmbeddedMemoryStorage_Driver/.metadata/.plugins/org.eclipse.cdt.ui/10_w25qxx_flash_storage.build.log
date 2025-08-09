@@ -1,0 +1,26 @@
+10:29:39 **** Incremental Build of configuration Debug for project 10_w25qxx_flash_storage ****
+make -j8 all 
+arm-none-eabi-gcc "../Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DSTM32 -DSTM32F4 -DSTM32F411RETx -DSTM32F411xE -c -I"C:/Users/Gaming Laptop RTX/Documents/EmbeddedMemoryStorage/10_w25qxx_flash_storage/chip_headers/CMSIS/Include" -I"C:/Users/Gaming Laptop RTX/Documents/EmbeddedMemoryStorage/10_w25qxx_flash_storage/chip_headers/CMSIS/Device/ST/STM32F4xx/Include" -I"C:/Users/Gaming Laptop RTX/Documents/EmbeddedMemoryStorage/10_w25qxx_flash_storage/Inc" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Src/main.d" -MT"Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Src/main.o"
+../Src/main.c:195:13: warning: 'test_write' defined but not used [-Wunused-function]
+  195 | static void test_write(void)
+      |             ^~~~~~~~~~
+../Src/main.c:178:13: warning: 'test_erase' defined but not used [-Wunused-function]
+  178 | static void test_erase(void)
+      |             ^~~~~~~~~~
+arm-none-eabi-gcc -o "10_w25qxx_flash_storage.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Gaming Laptop RTX\Documents\EmbeddedMemoryStorage\10_w25qxx_flash_storage\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="10_w25qxx_flash_storage.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: 10_w25qxx_flash_storage.elf
+ 
+arm-none-eabi-objdump -h -S  10_w25qxx_flash_storage.elf  > "10_w25qxx_flash_storage.list"
+arm-none-eabi-objcopy  -O binary  10_w25qxx_flash_storage.elf  "10_w25qxx_flash_storage.bin"
+arm-none-eabi-size   10_w25qxx_flash_storage.elf 
+   text	   data	    bss	    dec	    hex	filename
+  10264	    108	   1700	  12072	   2f28	10_w25qxx_flash_storage.elf
+Finished building: default.size.stdout
+ 
+Finished building: 10_w25qxx_flash_storage.bin
+ 
+Finished building: 10_w25qxx_flash_storage.list
+ 
+
+10:29:41 Build Finished. 0 errors, 2 warnings. (took 1s.944ms)
+

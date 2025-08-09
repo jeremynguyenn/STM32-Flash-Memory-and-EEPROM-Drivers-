@@ -1,0 +1,10 @@
+10:29:43 **** Incremental Build of configuration Debug for project 1_system_drivers-fpu ****
+make -j8 all 
+arm-none-eabi-size   1_system_drivers-fpu.elf 
+   text	   data	    bss	    dec	    hex	filename
+    748	      8	   1568	   2324	    914	1_system_drivers-fpu.elf
+Finished building: default.size.stdout
+ 
+
+10:29:44 Build Finished. 0 errors, 0 warnings. (took 496ms)
+

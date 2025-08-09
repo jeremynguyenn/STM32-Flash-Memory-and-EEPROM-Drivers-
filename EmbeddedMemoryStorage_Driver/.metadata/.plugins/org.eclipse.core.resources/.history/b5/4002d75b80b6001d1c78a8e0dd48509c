@@ -1,0 +1,16 @@
+w25qxx.c:28:7:w25qxx_spi_init	8	static
+w25qxx.c:49:7:w25qxx_cs_pin_init	4	static
+w25qxx.c:62:14:w25qxx_cs_on	4	static
+w25qxx.c:68:14:w25qxx_cs_off	4	static
+w25qxx.c:75:18:w25qxx_transmit	32	static
+w25qxx.c:88:18:w25qxx_receive	32	static
+w25qxx.c:100:11:w25qxx_read_id	24	static
+w25qxx.c:128:18:w25qxx_init	24	static
+w25qxx.c:160:10:w25qxx_get_status	24	static
+w25qxx.c:186:18:w25qxx_wait_for_ready	32	static
+w25qxx.c:207:18:w25qxx_write	56	static
+w25qxx.c:292:25:w25qxx_write_enable	24	static
+w25qxx.c:313:18:w25qxx_read	32	static
+w25qxx.c:351:18:w25qxx_erase	48	static
+w25qxx.c:426:18:w25qxx_chip_erase	24	static
+w25qxx.c:456:7:w25qxx_get_mem_info	8	static

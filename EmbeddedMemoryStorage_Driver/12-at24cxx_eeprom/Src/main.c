@@ -1,0 +1,49 @@
+#include <stdio.h>
+#include "stm32f4xx.h"
+#include "fpu.h"
+#include "uart.h"
+#include "timebase.h"
+#include "at24cxx_eeprom.h"
+#include "i2c.h"
+#include <string.h>
+
+
+#define BUFF_SIZE 	30
+
+uint8_t buff_rcv_data[BUFF_SIZE];
+uint8_t pbuff_test_string[] = "Test string from firmware";
+
+
+uint32_t g_curr_val  =  3650;
+uint32_t g_rcv_val;
+
+
+int main()
+{
+	/*Enable FPU*/
+	fpu_enable();
+
+	/*Initialize debug UART*/
+	debug_uart_init();
+
+	/*Initialize timebase*/
+	timebase_init();
+
+	/*Initialize i2c*/
+	i2c1_init();
+	/*Erase all pages*/
+	erase_all_pages();
+
+	eeprom_write(3 ,0 , (uint8_t *)pbuff_test_string, strlen((char *)pbuff_test_string));
+
+	eeprom_write_number(6,0,g_curr_val);
+	eeprom_read(3,0, (uint8_t *)buff_rcv_data, BUFF_SIZE);
+
+	g_rcv_val =  eeprom_read_number(6,0);
+	while(1)
+	{
+
+		delay(1);
+	}
+}
+

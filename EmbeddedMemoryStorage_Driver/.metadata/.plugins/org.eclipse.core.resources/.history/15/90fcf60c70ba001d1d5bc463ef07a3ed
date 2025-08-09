@@ -1,0 +1,6 @@
+
+#include "at24cxx_eeprom.h"
+#include "i2c.h"
+
+#define NUM_OF_PAGES 	256
+#define PAGE_SIZE		64

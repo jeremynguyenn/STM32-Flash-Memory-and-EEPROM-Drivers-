@@ -1,0 +1,9 @@
+at24cxx_eeprom.c:26:7:eeprom_write	48	static
+at24cxx_eeprom.c:68:7:eeprom_read	56	static
+at24cxx_eeprom.c:109:17:get_rw_byte_size	16	static
+at24cxx_eeprom.c:126:6:eeprom_page_erase	96	static
+at24cxx_eeprom.c:146:6:eeprom_write_number	16	static
+at24cxx_eeprom.c:153:7:eeprom_read_number	24	static
+at24cxx_eeprom.c:166:6:erase_all_pages	16	static
+at24cxx_eeprom.c:173:13:float_to_bytes	24	static
+at24cxx_eeprom.c:189:14:bytes_to_float	32	static

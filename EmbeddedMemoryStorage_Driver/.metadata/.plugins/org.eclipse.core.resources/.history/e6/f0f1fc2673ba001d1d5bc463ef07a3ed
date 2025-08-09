@@ -1,0 +1,113 @@
+#include <stdint.h>
+#include <math.h>
+#include "at24cxx_eeprom.h"
+#include "i2c.h"
+#include "timebase.h"
+
+#define NUM_OF_PAGES 	256
+#define PAGE_SIZE		64
+#define DEVICE_ADDR 	0xA0
+
+static uint16_t get_rw_byte_size(uint16_t size, uint16_t offset);
+
+
+void  eeprom_write(uint16_t page, uint16_t offset, uint8_t *data, uint16_t data_size)
+{
+
+	uint16_t mem_address;
+	uint16_t _bytes_towrite;
+    uint16_t page_address_bits;
+    uint16_t end_page;
+    uint16_t remaining_data_size;
+    uint16_t data_pos = 0;
+
+    /*Calculate end page*/
+
+    remaining_data_size = data_size;
+    page_address_bits =  log(PAGE_SIZE)/log(2);
+    end_page =  page + ((data_size + offset -1)/PAGE_SIZE);
+
+    while( page <=  end_page)
+    {
+    	/*Calculate address of mem location*/
+    	mem_address =  (page << page_address_bits) |offset;
+
+    	/*Calculate remaining bytes to write*/
+    	_bytes_towrite = get_rw_byte_size(remaining_data_size,offset);
+
+    	/*Write the data to the eeprom*/
+    	 i2c_mem_write( DEVICE_ADDR, mem_address,2, &data[data_pos],_bytes_towrite);
+
+    	 page++;
+    	 offset = 0;
+    	 remaining_data_size  =  _bytes_towrite;
+    	 data_pos += _bytes_towrite;
+
+
+    	 /*Delay 5ms*/
+    	 delay(5);
+
+    }
+
+
+}
+
+
+void  eeprom_read(uint16_t page, uint16_t offset, uint8_t *data, uint16_t data_size)
+{
+	uint16_t mem_address;
+	uint16_t _bytes_toread;
+    uint16_t page_address_bits;
+    uint16_t end_page;
+    uint16_t start_page;
+    uint16_t numofpages;
+    uint16_t remaining_data_size;
+    uint16_t data_pos = 0;
+
+    /*Calculate the ending page */
+    end_page =  page +  ((data_size + offset) / PAGE_SIZE);
+
+    start_page =  page;
+
+    /*Calculate num of pages to read*/
+    numofpages =  (end_page - start_page) + 1;
+
+    /*Calculate number of bits used for page addressing*/
+    page_address_bits =  log(PAGE_SIZE)/log(2);
+
+
+    for( int i = 0; i < numofpages; i++)
+    {
+    	/*Calculate mem address to read from*/
+    	mem_address =  start << page_address_bits | offset;
+
+    	_bytes_toread = get_rw_byte_size(remaining_data_size,offset);
+    	i2c_mem_read(DEVICE_ADDR, mem_address,2,&data[data_pos],_bytes_toread);
+
+    	start_page += 1;
+    	offset = 0;
+    	data_size  =  data_size - _bytes_toread;
+    	data_pos   = data_pos + _bytes_toread;
+
+    }
+
+
+}
+
+/*Get number of bytes to read or write*/
+static uint16_t get_rw_byte_size(uint16_t size, uint16_t offset)
+{
+	if((size +  offset ) < PAGE_SIZE )
+	{
+
+		/*If there is enough space in the current page,
+		 * return number of byte to read/write*/
+		return size;
+	}
+	else
+	{
+		/*If there is not enough space in the current page,
+		 * return number of bytes that can be written or read*/
+		return (PAGE_SIZE - offset);
+	}
+}

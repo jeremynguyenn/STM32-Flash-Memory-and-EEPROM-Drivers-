@@ -1,0 +1,145 @@
+#include <stdio.h>
+#include "stm32f4xx.h"
+#include "fpu.h"
+#include "uart.h"
+#include "timebase.h"
+#include "bsp.h"
+#include "adc.h"
+#include "spi.h"
+#include "w25qxx.h"
+#include <string.h>
+
+
+
+extern SPI_HandleTypeDef hspi1;
+W25QXX_t  w25qxx;
+
+W25QXX_Status_t status;
+
+static void dump_hex_data_to_serial(const char *header, uint32_t start_address, const uint8_t *buffer, uint32_t length);
+static void test_read(void);
+static void test_erase(void);
+static void set_test_buffer(uint8_t test_byte, uint8_t *buf, uint32_t len);
+static void test_write(void);
+
+
+int main()
+{
+	/*Enable FPU*/
+	fpu_enable();
+
+	/*Initialize timebase*/
+	timebase_init();
+
+	/*Initialize debug UART*/
+	debug_uart_init();
+
+	w25qxx_spi_init();
+
+	w25qxx_cs_pin_init();
+
+	status = w25qxx_init(&w25qxx,&hspi1);
+
+	 printf("System init....\n\r");
+
+	if(status == W25QXX_DEV_OK)
+	{
+		w25qxx_get_mem_info(w25qxx);
+	}
+
+
+	//test_read();
+
+	test_erase();
+
+	delay(10);
+
+	test_write();
+	while(1)
+	{
+
+	}
+}
+
+
+
+
+static void dump_hex_data_to_serial(const char *header, uint32_t start_address, const uint8_t *buffer, uint32_t length)
+{
+    // Print the header text
+    printf("%s\n", header);
+
+    // Loop through the buffer
+    for (uint32_t i = 0; i < length; ++i) {
+
+
+        // Check if we need to print a new line and the starting address
+        if (i % 16 == 0) {
+            printf("0x%08lx: ", start_address);
+        }
+
+        // Print the hexadecimal value of the current buffer element
+        printf("%02x ", buffer[i]);
+
+        // Check if we need to print a new line
+        if ((i + 1) % 16 == 0) {
+            printf("\n");
+        }
+
+        // Increment the starting address
+        ++start_address;
+    }
+
+
+}
+
+static void test_read(void)
+{
+	uint8_t buf[w25qxx.w25qxx_pg_sz];
+
+	status = w25qxx_read(&w25qxx, 0, (uint8_t*) &buf, sizeof(buf));
+
+	if(status == W25QXX_DEV_OK)
+	{
+		dump_hex_data_to_serial("<----PAGE START--->", 0, (uint8_t*) &buf, sizeof(buf));
+
+	}
+	else
+	{
+		printf("ERROR :  Cannot Read\n\r");
+	}
+
+}
+
+
+static void test_erase(void)
+{
+	uint8_t buf[w25qxx.w25qxx_pg_sz];
+
+	if(w25qxx_erase(&w25qxx, 0, sizeof(buf)) == W25QXX_DEV_OK)
+	{
+		test_read();
+	}
+
+}
+
+static void set_test_buffer(uint8_t test_byte, uint8_t *buf, uint32_t len)
+{
+    memset(buf, test_byte, len);
+
+}
+
+static void test_write(void)
+{
+	uint8_t buf[w25qxx.w25qxx_pg_sz];
+
+	set_test_buffer(0xBE,buf,sizeof(buf));
+
+	if (w25qxx_write(&w25qxx, 0, (uint8_t*) &buf, sizeof(buf)) == W25QXX_DEV_OK)
+	{
+		delay(10);
+
+		test_read();
+	}
+
+}

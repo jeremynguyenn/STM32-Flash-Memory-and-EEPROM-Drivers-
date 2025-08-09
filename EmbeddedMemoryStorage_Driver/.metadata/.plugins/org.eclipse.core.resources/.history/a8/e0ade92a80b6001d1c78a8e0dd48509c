@@ -1,0 +1,44 @@
+#ifndef __W25QXX_H
+#define __W25QXX_H
+#include "spi.h"
+
+#include "stm32f4xx.h"
+
+
+#define W25QXX_JEDEC_ID					0x9F
+#define W25QXX_READ_STATUS_REG_1		0x05
+#define W25QXX_WRITE_EN					0x06
+#define W25QXX_PAGE_PROGRAM				0x02
+#define W25QXX_READ_DATA				0x03
+#define W25QXX_SECTOR_ERASE				0x20
+#define W25QXX_CHIP_ERASE				0xC7
+
+typedef struct
+{
+	uint8_t  w25qxx_manuf_id;
+	uint16_t w25qxx_dev_id;
+	uint32_t w25qxx_blk_sz;
+	uint32_t w25qxx_blk_cnt;
+	uint32_t w25qxx_sect_sz;
+	uint32_t w25qxx_sect_in_blk;
+	uint32_t w25qxx_pg_sz;
+	SPI_HandleTypeDef *w25qxx_spi_handle_t;
+}W25QXX_t;
+
+typedef enum
+{
+	W25QXX_DEV_OK,
+	W25QXX_DEV_ERR,
+	W25QXX_DEV_TIMEOUT
+}W25QXX_Status_t;
+
+void w25qxx_spi_init(void);
+void w25qxx_cs_pin_init(void);
+W25QXX_Status_t w25qxx_init(W25QXX_t *w25qxx,SPI_HandleTypeDef *hspi);
+W25QXX_Status_t w25qxx_write(W25QXX_t *w25qxx, uint32_t address, uint8_t *buf, uint32_t len);
+W25QXX_Status_t w25qxx_read(W25QXX_t *w25qxx, uint32_t address, uint8_t *buf, uint32_t len);
+W25QXX_Status_t w25qxx_erase(W25QXX_t *w25qxx, uint32_t address, uint32_t len);
+W25QXX_Status_t w25qxx_chip_erase(W25QXX_t *w25qxx);
+void w25qxx_get_mem_info(void);
+
+#endif

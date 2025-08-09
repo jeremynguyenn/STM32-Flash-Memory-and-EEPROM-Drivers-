@@ -1,0 +1,10 @@
+10:29:42 **** Incremental Build of configuration Debug for project 11_system_drivers-i2c-extension ****
+make -j8 all 
+arm-none-eabi-size   11_system_drivers-i2c-extension.elf 
+   text	   data	    bss	    dec	    hex	filename
+   5732	    108	   1604	   7444	   1d14	11_system_drivers-i2c-extension.elf
+Finished building: default.size.stdout
+ 
+
+10:29:42 Build Finished. 0 errors, 0 warnings. (took 331ms)
+

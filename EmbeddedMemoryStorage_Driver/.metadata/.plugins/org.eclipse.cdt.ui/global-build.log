@@ -1,0 +1,56 @@
+10:46:47 **** Incremental Build of configuration Debug for project 12-at24cxx_eeprom ****
+make -j8 all 
+arm-none-eabi-gcc "../Src/i2c.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DSTM32 -DSTM32F4 -DSTM32F411RETx -DSTM32F411xE -c -I../Inc -I"C:/Users/Gaming Laptop RTX/Documents/EmbeddedMemoryStorage/12-at24cxx_eeprom/chip_headers/CMSIS/Include" -I"C:/Users/Gaming Laptop RTX/Documents/EmbeddedMemoryStorage/12-at24cxx_eeprom/chip_headers/CMSIS/Device/ST/STM32F4xx/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Src/i2c.d" -MT"Src/i2c.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Src/i2c.o"
+../Src/i2c.c: In function 'i2c1_byte_read':
+../Src/i2c.c:96:15: warning: variable 'tmp' set but not used [-Wunused-but-set-variable]
+   96 |  volatile int tmp;
+      |               ^~~
+../Src/i2c.c: In function 'i2c1_burst_read':
+../Src/i2c.c:154:15: warning: variable 'tmp' set but not used [-Wunused-but-set-variable]
+  154 |  volatile int tmp;
+      |               ^~~
+../Src/i2c.c: In function 'i2c1_write_byte':
+../Src/i2c.c:234:15: warning: variable 'tmp' set but not used [-Wunused-but-set-variable]
+  234 |  volatile int tmp;
+      |               ^~~
+../Src/i2c.c: In function 'i2c1_burst_write':
+../Src/i2c.c:273:15: warning: variable 'tmp' set but not used [-Wunused-but-set-variable]
+  273 |  volatile int tmp;
+      |               ^~~
+../Src/i2c.c: In function 'i2c_request_mem_write':
+../Src/i2c.c:318:19: warning: variable 'tmpreg' set but not used [-Wunused-but-set-variable]
+  318 |     __IO uint32_t tmpreg = 0x00U;
+      |                   ^~~~~~
+../Src/i2c.c: In function 'i2c_request_mem_read':
+../Src/i2c.c:363:18: warning: variable 'tmpreg' set but not used [-Wunused-but-set-variable]
+  363 |    __IO uint32_t tmpreg = 0x00U;
+      |                  ^~~~~~
+../Src/i2c.c: In function 'i2c_mem_write':
+../Src/i2c.c:429:6: warning: implicit declaration of function 'delay' [-Wimplicit-function-declaration]
+  429 |      delay(5);
+      |      ^~~~~
+../Src/i2c.c: In function 'i2c_mem_read':
+../Src/i2c.c:489:18: warning: variable 'tmpreg' set but not used [-Wunused-but-set-variable]
+  489 |    __IO uint32_t tmpreg = 0x00U;
+      |                  ^~~~~~
+arm-none-eabi-gcc -o "12-at24cxx_eeprom.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Gaming Laptop RTX\Documents\EmbeddedMemoryStorage\12-at24cxx_eeprom\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="12-at24cxx_eeprom.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: 12-at24cxx_eeprom.elf
+ 
+arm-none-eabi-objdump -h -S  12-at24cxx_eeprom.elf  > "12-at24cxx_eeprom.list"
+arm-none-eabi-objcopy  -O binary  12-at24cxx_eeprom.elf  "12-at24cxx_eeprom.bin"
+arm-none-eabi-size   12-at24cxx_eeprom.elf 
+   text	   data	    bss	    dec	    hex	filename
+   3644	     40	   1616	   5300	   14b4	12-at24cxx_eeprom.elf
+Finished building: default.size.stdout
+ 
+Finished building: 12-at24cxx_eeprom.bin
+Finished building: 12-at24cxx_eeprom.list
+ 
+ 
+10:46:53 **** Incremental Build of configuration Debug for project 12-at24cxx_eeprom ****
+make -j8 all 
+arm-none-eabi-size   12-at24cxx_eeprom.elf 
+   text	   data	    bss	    dec	    hex	filename
+   3644	     40	   1616	   5300	   14b4	12-at24cxx_eeprom.elf
+Finished building: default.size.stdout
+ 

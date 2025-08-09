@@ -1,0 +1,2 @@
+main.c:25:5:main	16	static
+main.c:68:17:get_word_length	32	static
